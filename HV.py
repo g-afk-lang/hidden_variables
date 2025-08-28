@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from scipy.stats import pearsonr
 import time
-
+from random import randint
 # FIXED IMPORTS for Qiskit 1.0+
 try:
     from qiskit import QuantumCircuit, transpile
@@ -89,35 +89,6 @@ class HiddenVariablePredictor:
         
         return np.array(features)
     
-    def generate_hidden_variable(self, current_features, frame_id):
-        """Generate the 'true' hidden variable from deterministic patterns"""
-        # This simulates the "hidden deterministic force" that we're trying to predict
-        
-        # Combine multiple deterministic components
-        hidden_var = 0
-        
-        # Component 1: Intensity-based determinism
-        if len(current_features) > 10:
-            intensity_component = np.sin(current_features[0] * 0.1) * current_features[1]
-            hidden_var += intensity_component
-        
-        # Component 2: Gradient-based determinism  
-        if len(current_features) > 20:
-            gradient_component = np.cos(current_features[15] * 0.05) * current_features[16]
-            hidden_var += gradient_component
-        
-        # Component 3: Temporal determinism
-        if len(current_features) > 25:
-            temporal_component = np.tanh(current_features[20] * 0.02) * frame_id * 0.1
-            hidden_var += temporal_component
-        
-        # Component 4: Frequency determinism
-        if len(current_features) > 30:
-            freq_component = np.log1p(current_features[25]) * np.sin(frame_id * 0.1)
-            hidden_var += freq_component
-        
-        return hidden_var
-    
     def train_predictor(self, features, hidden_var):
         """Train the hidden variable predictor"""
         self.training_data.append(features)
@@ -172,9 +143,7 @@ class RealTimeQuantumCameraProcessor:
             pixel_features = self.hidden_predictor.extract_pixel_features(frame)
             
             # Generate the "true" hidden variable (what we're trying to predict)
-            true_hidden_var = self.hidden_predictor.generate_hidden_variable(
-                pixel_features, self.quantum_frames_processed
-            )
+            true_hidden_var = randint(1,100)
             
             # Train the predictor
             self.hidden_predictor.train_predictor(pixel_features, true_hidden_var)
