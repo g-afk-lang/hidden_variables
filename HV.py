@@ -3,6 +3,44 @@ import numpy as np
 from scipy.stats import pearsonr
 import time
 from random import randint
+
+import requests
+bet = input("INPUT: ")
+# -------- Windice request helpers (single call safe) --------
+API_URL = "https://windice.io/api/v1/api/roll"
+API_HEADERS = {
+    "Authorization": "",
+    "Content-Type": "application/json",
+}
+
+def roll_low_once():
+    data = {"curr": "win", "bet": 1, "game": "in", "low": 1, "high": 5000}
+    try:
+        r = requests.post(API_URL, headers=API_HEADERS, json=data, timeout=10)
+        r.raise_for_status()
+        js = r.json()
+        print(js)
+        bet = js['data']['result']
+        # Robust extract: return numeric “result” if present, else None
+        return js.get("data", {}).get("result", None)
+    except Exception as e:
+        print(f"Windice low roll error: {e}")
+        return None
+
+def roll_high_once():
+    data = {"curr": "win", "bet": 1, "game": "in", "low": 5000, "high": 9999}
+    try:
+        r = requests.post(API_URL, headers=API_HEADERS, json=data, timeout=10)
+        r.raise_for_status()
+        js = r.json()
+        print(js)
+        bet = js['data']['result']
+        return js.get("data", {}).get("result", None)
+    except Exception as e:
+        print(f"Windice high roll error: {e}")
+        return None
+        
+        
 # FIXED IMPORTS for Qiskit 1.0+
 try:
     from qiskit import QuantumCircuit, transpile
@@ -146,13 +184,18 @@ class RealTimeQuantumCameraProcessor:
             true_hidden_var = randint(1,100)
             
             # Train the predictor
-            self.hidden_predictor.train_predictor(pixel_features, int(input("INPUT: ")))
+            self.hidden_predictor.train_predictor(pixel_features, bet)
             
             # Predict hidden variable
             predicted_hidden_var = self.hidden_predictor.predict_hidden_variable(pixel_features)
             
             print(f"   🔮 Hidden variable - True: {true_hidden_var:.4f}, Predicted: {predicted_hidden_var:.4f}")
-            
+            if true_hidden_var < 50:
+                roll_low_once()
+                return
+            if true_hidden_var > 50:
+                roll_high_once()
+                return
             # Process frame quantumly with hidden variable influence
             gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame
             small_frame = cv2.resize(gray_frame, (4, 4))
@@ -359,10 +402,10 @@ if __name__ == "__main__":
     if not SKLEARN_AVAILABLE:
         print("⚠️  For enhanced hidden variable prediction, install:")
         print("pip install scikit-learn")
-    
-    try:
-        analyzer = RealTimeQuantumCameraAnalyzer()
-        analyzer.process_camera_stream()
-        
-    except Exception as e:
-        print(f"❌ Quantum camera processing error: {e}")
+    while True:
+        try:
+            analyzer = RealTimeQuantumCameraAnalyzer()
+            analyzer.process_camera_stream()
+            
+        except Exception as e:
+            print(f"❌ Quantum camera processing error: {e}")
