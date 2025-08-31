@@ -146,7 +146,7 @@ class RealTimeQuantumCameraProcessor:
             true_hidden_var = randint(1,100)
             
             # Train the predictor
-            self.hidden_predictor.train_predictor(pixel_features, true_hidden_var)
+            self.hidden_predictor.train_predictor(pixel_features, int(input("INPUT: ")))
             
             # Predict hidden variable
             predicted_hidden_var = self.hidden_predictor.predict_hidden_variable(pixel_features)
@@ -255,88 +255,84 @@ class RealTimeQuantumCameraAnalyzer:
         print("\nPress 'q' to quit")
         
         try:
-            while True:
-                ret, frame = cap.read()
-                if not ret:
-                    print("❌ Failed to grab frame - camera may be in use")
-                    break
+
+            ret, frame = cap.read()
+            if not ret:
+                print("❌ Failed to grab frame - camera may be in use")
+            
+            print(f"\n📹 Frame {self.frame_count}:")
+            
+            # QUANTUM PROCESS with HIDDEN VARIABLE PREDICTION
+            quantum_frame, current_quantum_state, coherence, true_hidden, predicted_hidden = self.quantum_processor.quantum_process_camera_frame(frame)
+            
+            # Track prediction accuracy
+            if true_hidden != 0:
+                accuracy = 1 - abs(true_hidden - predicted_hidden) / (abs(true_hidden) + 1e-6)
+                self.hidden_variable_accuracy.append(accuracy)
+            
+            # QUANTUM CORRELATION with previous frame
+            if self.previous_quantum_state is not None and current_quantum_state is not None:
+                fidelity = np.abs(np.vdot(current_quantum_state, self.previous_quantum_state))**2
+                print(f"   🔗 Quantum frame correlation: fidelity={fidelity:.4f}")
+                self.total_quantum_correlations.append(fidelity)
+            
+            # Display results
+            try:
+                display_frame = cv2.resize(frame, (320, 240))
+                quantum_display = cv2.resize(quantum_frame, (320, 240))
+                if len(quantum_display.shape) == 2:
+                    quantum_display = cv2.cvtColor(quantum_display, cv2.COLOR_GRAY2BGR)
                 
-                print(f"\n📹 Frame {self.frame_count}:")
+                combined_display = np.hstack([display_frame, quantum_display])
                 
-                # QUANTUM PROCESS with HIDDEN VARIABLE PREDICTION
-                quantum_frame, current_quantum_state, coherence, true_hidden, predicted_hidden = self.quantum_processor.quantum_process_camera_frame(frame)
+                # Add information overlay
+                cv2.putText(combined_display, "Original", (10, 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(combined_display, "Quantum + Hidden Forces", (330, 30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
                 
-                # Track prediction accuracy
-                if true_hidden != 0:
-                    accuracy = 1 - abs(true_hidden - predicted_hidden) / (abs(true_hidden) + 1e-6)
-                    self.hidden_variable_accuracy.append(accuracy)
+                cv2.putText(combined_display, f"Q-Frames: {self.quantum_processor.quantum_frames_processed}", 
+                           (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 
-                # QUANTUM CORRELATION with previous frame
-                if self.previous_quantum_state is not None and current_quantum_state is not None:
-                    fidelity = np.abs(np.vdot(current_quantum_state, self.previous_quantum_state))**2
-                    print(f"   🔗 Quantum frame correlation: fidelity={fidelity:.4f}")
-                    self.total_quantum_correlations.append(fidelity)
+                cv2.putText(combined_display, f"Hidden Var: {predicted_hidden:.3f}", 
+                           (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
                 
-                # Display results
-                try:
-                    display_frame = cv2.resize(frame, (320, 240))
-                    quantum_display = cv2.resize(quantum_frame, (320, 240))
-                    if len(quantum_display.shape) == 2:
-                        quantum_display = cv2.cvtColor(quantum_display, cv2.COLOR_GRAY2BGR)
-                    
-                    combined_display = np.hstack([display_frame, quantum_display])
-                    
-                    # Add information overlay
-                    cv2.putText(combined_display, "Original", (10, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                    cv2.putText(combined_display, "Quantum + Hidden Forces", (330, 30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-                    
-                    cv2.putText(combined_display, f"Q-Frames: {self.quantum_processor.quantum_frames_processed}", 
-                               (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    
-                    cv2.putText(combined_display, f"Hidden Var: {predicted_hidden:.3f}", 
-                               (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-                    
-                    cv2.putText(combined_display, f"Coherence: {coherence:.3f}", 
-                               (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
-                    
-                    if len(self.hidden_variable_accuracy) > 0:
-                        avg_accuracy = np.mean(self.hidden_variable_accuracy[-10:])
-                        cv2.putText(combined_display, f"Prediction Acc: {avg_accuracy:.3f}", 
-                                   (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
-                    
-                    # Color border based on hidden variable strength
-                    if abs(predicted_hidden) > 1.0:
-                        border_color = (0, 0, 255)  # Red for strong hidden forces
-                    elif abs(predicted_hidden) > 0.5:
-                        border_color = (0, 255, 255)  # Yellow for moderate forces
-                    else:
-                        border_color = (0, 255, 0)  # Green for weak forces
-                    
-                    cv2.rectangle(combined_display, (0, 0), (combined_display.shape[1]-1, combined_display.shape[0]-1), border_color, 3)
-                    
-                    cv2.imshow('Quantum Camera with Hidden Variable Prediction', combined_display)
-                    
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == ord('q'):
-                        break
-                        
-                except cv2.error as e:
-                    print(f"   ⚠️ Display error: {e}")
-                    pass
+                cv2.putText(combined_display, f"Coherence: {coherence:.3f}", 
+                           (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
                 
-                self.previous_quantum_state = current_quantum_state
-                self.frame_count += 1
+                if len(self.hidden_variable_accuracy) > 0:
+                    avg_accuracy = np.mean(self.hidden_variable_accuracy[-10:])
+                    cv2.putText(combined_display, f"Prediction Acc: {avg_accuracy:.3f}", 
+                               (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
                 
-                # Print summary every 10 frames
-                if self.frame_count % 10 == 0:
-                    avg_accuracy = np.mean(self.hidden_variable_accuracy[-10:]) if self.hidden_variable_accuracy else 0
-                    print(f"\n📊 Hidden Variable Prediction Summary:")
-                    print(f"   • Frames processed: {self.quantum_processor.quantum_frames_processed}")
-                    print(f"   • Average prediction accuracy: {avg_accuracy:.4f}")
-                    print(f"   • Hidden variable predictor trained: {self.quantum_processor.hidden_predictor.trained}")
+                # Color border based on hidden variable strength
+                if abs(predicted_hidden) > 1.0:
+                    border_color = (0, 0, 255)  # Red for strong hidden forces
+                elif abs(predicted_hidden) > 0.5:
+                    border_color = (0, 255, 255)  # Yellow for moderate forces
+                else:
+                    border_color = (0, 255, 0)  # Green for weak forces
                 
+                cv2.rectangle(combined_display, (0, 0), (combined_display.shape[1]-1, combined_display.shape[0]-1), border_color, 3)
+                
+                cv2.imshow('Quantum Camera with Hidden Variable Prediction', combined_display)
+                
+                    
+            except cv2.error as e:
+                print(f"   ⚠️ Display error: {e}")
+                pass
+            
+            self.previous_quantum_state = current_quantum_state
+            self.frame_count += 1
+            
+            # Print summary every 10 frames
+            if self.frame_count % 1 == 0:
+                avg_accuracy = np.mean(self.hidden_variable_accuracy[-10:]) if self.hidden_variable_accuracy else 0
+                print(f"\n📊 Hidden Variable Prediction Summary:")
+                print(f"   • Frames processed: {self.quantum_processor.quantum_frames_processed}")
+                print(f"   • Average prediction accuracy: {avg_accuracy:.4f}")
+                print(f"   • Hidden variable predictor trained: {self.quantum_processor.hidden_predictor.trained}")
+            
         except KeyboardInterrupt:
             print("\n🛑 Stopping quantum camera processing...")
         
